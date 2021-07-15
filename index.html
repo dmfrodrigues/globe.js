@@ -17,7 +17,7 @@
     <script>
         window.addEventListener("load", async function(){
             let globe = new Globe("svg#globe", 800);
-            globe.originalRotation = [0, -10, 0];
+            globe.rotation = [0, -10, 0];
             await globe.initialize();
 
             globe.nativeCountry("Portugal");
@@ -26,6 +26,8 @@
             visitedCountriesRaw.forEach(function(countryObj){ globe.highlightCountry(countryObj.country); });
 
             globe.addAnchor("Finland", "abc");
+            globe.enableDrag();
+            globe.enableZoom();
 
             globe.registerRotation(50, 0.005);
         });
