@@ -2,8 +2,38 @@
  * @brief A class to manage a globe.
  */
 class Globe {
+    
+    /**
+     * @brief Sensitivity of the rotation.
+     * 
+     * Currently adjusted so that, if the user grabs a point close to the center of the viewbox,
+     * the point it is dragging travels approximately at the same speed as the cursor.
+     */
+    static _ROTATION_SENSITIVITY = 0.09;
+    static _ROTATION_RESUME_TIMEOUT = 10000;
+     
     static _COUNTRIES;
     static _COUNTRY_BY_ID;
+
+    /**
+     * @brief Initialize static private members asynchronously.
+     * 
+     * Initializes, for instance, the coordinates of each country,
+     * as well as each country's code (according to the coordinates dataset) and name.
+     */
+     static async _initializeStaticAsync(){
+        let [worldData, countryNames] = await Promise.all([
+            d3.json("https://unpkg.com/world-atlas@1/world/110m.json"),
+            d3.tsv("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv")
+        ]);
+        
+        Globe._COUNTRIES = topojson.feature(worldData, worldData["objects"]["countries"]).features;
+        
+        Globe._COUNTRY_BY_ID = {};
+        countryNames.forEach(function (d) {
+            Globe._COUNTRY_BY_ID[d.id] = d.name;
+        });
+    }
 
     /**
      * @brief Construct from svg element selector and size.
@@ -36,26 +66,6 @@ class Globe {
     }
 
     /**
-     * @brief Initialize static private members asynchronously.
-     * 
-     * Initializes, for instance, the coordinates of each country,
-     * as well as each country's code (according to the coordinates dataset) and name.
-     */
-    static async _initializeStaticAsync(){
-        let [worldData, countryNames] = await Promise.all([
-            d3.json("https://unpkg.com/world-atlas@1/world/110m.json"),
-            d3.tsv("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv")
-        ]);
-        
-        Globe._COUNTRIES = topojson.feature(worldData, worldData["objects"]["countries"]).features;
-        
-        Globe._COUNTRY_BY_ID = {};
-        countryNames.forEach(function (d) {
-            Globe._COUNTRY_BY_ID[d.id] = d.name;
-        });
-    }
-
-    /**
      * @brief Initialize the parts of globe that might require asynchronous operations.
      * 
      * If not yet initialized, this function will initialize the static private members required
@@ -70,15 +80,113 @@ class Globe {
         this._drawAllCountries();
     }
 
-    /**
-     * @brief Sensitivity of the rotation.
-     * 
-     * Currently adjusted so that, if the user grabs a point close to the center of the viewbox,
-     * the point it is dragging travels approximately at the same speed as the cursor.
-     */
-    static _ROTATION_SENSITIVITY = 0.09;
+    _drawWater(){
+        this._map.append("path")
+            .datum({type: "Sphere"})
+            .attr("class", "water")
+            .attr("d", this._path);
+    }
 
-    static _ROTATION_RESUME_TIMEOUT = 10000;
+    _drawAllCountries(){
+        this._map.selectAll("path.land")
+            .data(Globe._COUNTRIES)
+            .enter()
+            .append("a")
+            .each(
+                function (feature) {
+                    let id = parseInt(feature.id);
+                    let countryName = "undefined";
+                    try {
+                        countryName = "anchor_" + Globe._COUNTRY_BY_ID[id].split(' ').join('_');
+                    } catch (err) {
+                        console.warn(countryName);
+                    }
+                    d3.select(this).attr("id", countryName);
+                }
+            )
+            .append("path")
+            .attr("class", "land")
+            .attr("d", this._path)
+            .each(
+                function (feature) {
+                    let id = parseInt(feature.id);
+                    let countryName = "undefined";
+                    try {
+                        countryName = Globe._COUNTRY_BY_ID[id].split(' ').join('_');
+                    } catch (err) {
+                        console.warn(countryName);
+                    }
+                    d3.select(this).attr("id", countryName);
+                }
+            );
+    }
+
+    set rotation (rot){
+        this._projection.rotate(rot);
+    }
+
+    nativeCountry(country){
+        d3.selectAll("#" + country.split(' ').join('_')).attr("class", "land native");
+    }
+
+    highlightCountry(country){
+        d3.selectAll("#" + country.split(' ').join('_')).attr("class", "land highlight");
+    }
+
+    addAnchor(country, href){
+        d3.select("#anchor_" + country.split(' ').join('_')).attr("href", href);
+    }
+
+    /**
+     * @brief Add a location to the globe.
+     * 
+     * The location's position is specified by its coordinates in the globe, in format [lon, lat].
+     * Longitude increases east and latitude increases north.
+     * 
+     * @param {Array} coord Coordinates array
+     * @param {String} tag Tag of the new location
+     */
+    addLocation(coord, tag) {
+        this._locations.push({
+            coordinates: coord,
+            tag: tag
+        });
+
+        const markers = this._markerGroup
+        .selectAll('.marker')
+        .data(this._locations);
+    
+        const newMarkers = markers
+            .enter()
+            .append("g")
+            .attr("class", "marker");
+            
+        newMarkers.append("circle").attr("r", 3);
+
+        this._drawMarkers();
+    }
+
+    _drawMarkers(){
+        const self = this;
+        const center = [this._size/2, this._size/2];
+        const centerXY = self._projection.invert(center);
+
+        const markers = this._markerGroup
+            .selectAll('.marker');
+
+        markers
+            .selectAll("circle")
+            .attr('cx', d => self._projection(d.coordinates)[0])
+            .attr('cy', d => self._projection(d.coordinates)[1])
+            .attr('fill', d => {
+                const dist = d3.geoDistance(d.coordinates, centerXY);
+                return dist > (Math.PI / 2) ? 'none' : 'tomato';
+            });
+            
+        this._markerGroup.each(function() {
+            this.parentNode.appendChild(this);
+        });
+    }
 
     /**
      * @brief Enable dragging the globe.
@@ -160,92 +268,6 @@ class Globe {
         );
     }
 
-    _drawWater(){
-        this._map.append("path")
-            .datum({type: "Sphere"})
-            .attr("class", "water")
-            .attr("d", this._path);
-    }
-
-    _drawAllCountries(){
-        this._map.selectAll("path.land")
-            .data(Globe._COUNTRIES)
-            .enter()
-            .append("a")
-            .each(
-                function (feature) {
-                    let id = parseInt(feature.id);
-                    let countryName = "undefined";
-                    try {
-                        countryName = "anchor_" + Globe._COUNTRY_BY_ID[id].split(' ').join('_');
-                    } catch (err) {
-                        console.warn(countryName);
-                    }
-                    d3.select(this).attr("id", countryName);
-                }
-            )
-            .append("path")
-            .attr("class", "land")
-            .attr("d", this._path)
-            .each(
-                function (feature) {
-                    let id = parseInt(feature.id);
-                    let countryName = "undefined";
-                    try {
-                        countryName = Globe._COUNTRY_BY_ID[id].split(' ').join('_');
-                    } catch (err) {
-                        console.warn(countryName);
-                    }
-                    d3.select(this).attr("id", countryName);
-                }
-            );
-    }
-
-    nativeCountry(country){
-        d3.selectAll("#" + country.split(' ').join('_')).attr("class", "land native");
-    }
-
-    highlightCountry(country){
-        d3.selectAll("#" + country.split(' ').join('_')).attr("class", "land highlight");
-    }
-
-    /**
-     * @brief Add a point to the globe.
-     * 
-     * The point's position is specified by its coordinates in the globe, in format [lon, lat].
-     * Longitude increases east and latitude increases north.
-     * 
-     * @param {Array} coord Coordinates array
-     * @param {String} tag Tag of the new point
-     */
-    addPoint(coord, tag) {
-        this._locations.push({
-            coordinates: coord,
-            tag: tag
-        });
-
-        const markers = this._markerGroup
-        .selectAll('.marker')
-        .data(this._locations);
-    
-        const newMarkers = markers
-            .enter()
-            .append("g")
-            .attr("class", "marker");
-            
-        newMarkers.append("circle").attr("r", 3);
-
-        this._drawMarkers();
-    }
-
-    set rotation (rot){
-        this._projection.rotate(rot);
-    }
-
-    addAnchor(country, href){
-        d3.select("#anchor_" + country.split(' ').join('_')).attr("href", href);
-    }
-
     registerRotation(delay, speed){
         this._rotationDelay = delay;
         this._rotationSpeed = speed;
@@ -267,27 +289,5 @@ class Globe {
     _recalculate(){
         this._map.selectAll("path").attr("d", this._path);
         this._drawMarkers();
-    }
-
-    _drawMarkers(){
-        const self = this;
-        const center = [this._size/2, this._size/2];
-        const centerXY = self._projection.invert(center);
-
-        const markers = this._markerGroup
-            .selectAll('.marker');
-
-        markers
-            .selectAll("circle")
-            .attr('cx', d => self._projection(d.coordinates)[0])
-            .attr('cy', d => self._projection(d.coordinates)[1])
-            .attr('fill', d => {
-                const dist = d3.geoDistance(d.coordinates, centerXY);
-                return dist > (Math.PI / 2) ? 'none' : 'tomato';
-            });
-            
-        this._markerGroup.each(function() {
-            this.parentNode.appendChild(this);
-        });
     }
 }
