@@ -24,11 +24,15 @@ class Globe {
             .translate([this._size / 2, this._size / 2]);
         this._path = d3.geoPath().projection(this._projection);
 
+        this._markerGroup = this._map.append("g");
+
         this._rotationTimer = null;
         this._rotationDelay = null;
         this._rotationSpeed = null;
         this._tprev = null;
         this._rotationResumeTimer = null;
+
+        this._locations = [];
     }
 
     /**
@@ -123,7 +127,7 @@ class Globe {
                     -event.y * c,
                     r[2]
                 ]);
-                self._map.selectAll("path").attr("d", self._path);
+                self._recalculate();
             })
             .on("end", function (event, d) {
                 // Create "resume timer"
@@ -151,7 +155,7 @@ class Globe {
                 let s = self._size/2;
                 let news = s * event.transform.k;
                 self._projection.scale(news);
-                self._map.selectAll("path").attr("d", self._path);
+                self._recalculate();
             })
         );
     }
@@ -205,6 +209,35 @@ class Globe {
         d3.selectAll("#" + country.split(' ').join('_')).attr("class", "land highlight");
     }
 
+    /**
+     * @brief Add a point to the globe.
+     * 
+     * The point's position is specified by its coordinates in the globe, in format [lon, lat].
+     * Longitude increases east and latitude increases north.
+     * 
+     * @param {Array} coord Coordinates array
+     * @param {String} tag Tag of the new point
+     */
+    addPoint(coord, tag) {
+        this._locations.push({
+            coordinates: coord,
+            tag: tag
+        });
+
+        const markers = this._markerGroup
+        .selectAll('.marker')
+        .data(this._locations);
+    
+        const newMarkers = markers
+            .enter()
+            .append("g")
+            .attr("class", "marker");
+            
+        newMarkers.append("circle").attr("r", 3);
+
+        this._drawMarkers();
+    }
+
     set rotation (rot){
         this._projection.rotate(rot);
     }
@@ -227,7 +260,34 @@ class Globe {
         const r = this._projection.rotate();
         r[0] += this._rotationSpeed * dt
         this._projection.rotate(r);
-        this._map.selectAll("path").attr("d", this._path);
+        this._recalculate();
         this._tprev = t;
+    }
+
+    _recalculate(){
+        this._map.selectAll("path").attr("d", this._path);
+        this._drawMarkers();
+    }
+
+    _drawMarkers(){
+        const self = this;
+        const center = [this._size/2, this._size/2];
+        const centerXY = self._projection.invert(center);
+
+        const markers = this._markerGroup
+            .selectAll('.marker');
+
+        markers
+            .selectAll("circle")
+            .attr('cx', d => self._projection(d.coordinates)[0])
+            .attr('cy', d => self._projection(d.coordinates)[1])
+            .attr('fill', d => {
+                const dist = d3.geoDistance(d.coordinates, centerXY);
+                return dist > (Math.PI / 2) ? 'none' : 'tomato';
+            });
+            
+        this._markerGroup.each(function() {
+            this.parentNode.appendChild(this);
+        });
     }
 }
