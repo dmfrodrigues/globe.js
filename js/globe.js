@@ -14,6 +14,7 @@ class Globe {
      
     static _COUNTRIES;
     static _COUNTRY_BY_ID;
+    static _MARKER;
 
     /**
      * @brief Initialize static private members asynchronously.
@@ -22,9 +23,10 @@ class Globe {
      * as well as each country's code (according to the coordinates dataset) and name.
      */
      static async _initializeStaticAsync(){
-        let [worldData, countryNames] = await Promise.all([
+        let [worldData, countryNames, marker] = await Promise.all([
             d3.json("https://unpkg.com/world-atlas@1/world/110m.json"),
-            d3.tsv("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv")
+            d3.tsv("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv"),
+            d3.text("marker.svg")
         ]);
         
         Globe._COUNTRIES = topojson.feature(worldData, worldData["objects"]["countries"]).features;
@@ -33,6 +35,8 @@ class Globe {
         countryNames.forEach(function (d) {
             Globe._COUNTRY_BY_ID[d.id] = d.name;
         });
+
+        Globe._MARKER = marker;
     }
 
     /**
@@ -54,7 +58,7 @@ class Globe {
             .translate([this._size / 2, this._size / 2]);
         this._path = d3.geoPath().projection(this._projection);
 
-        this._markerGroup = this._map.append("g");
+        this._markerGroup = this._svg.append("g").attr("class", "marker_group");
 
         this._rotationTimer = null;
         this._rotationDelay = null;
@@ -152,16 +156,16 @@ class Globe {
             tag: tag
         });
 
-        const markers = this._markerGroup
-        .selectAll('.marker')
-        .data(this._locations);
-    
-        const newMarkers = markers
+        this._markerGroup
+            .selectAll('.marker')
+            .data(this._locations)
             .enter()
             .append("g")
-            .attr("class", "marker");
-            
-        newMarkers.append("circle").attr("r", 3);
+            .attr("class", "marker")
+            .append("svg")
+            .append("path")
+            .attr("d", "M 0,0 l -3,+3 l +3,+3 l +3,-3 z")
+            .attr("fill", "tomato");
 
         this._drawMarkers();
     }
@@ -175,13 +179,15 @@ class Globe {
             .selectAll('.marker');
 
         markers
-            .selectAll("circle")
-            .attr('cx', d => self._projection(d.coordinates)[0])
-            .attr('cy', d => self._projection(d.coordinates)[1])
+            .selectAll("svg")
+            .attr('x', d => self._projection(d.coordinates)[0])
+            .attr('y', d => self._projection(d.coordinates)[1])
+            /*
             .attr('fill', d => {
                 const dist = d3.geoDistance(d.coordinates, centerXY);
                 return dist > (Math.PI / 2) ? 'none' : 'tomato';
             });
+            */
             
         this._markerGroup.each(function() {
             this.parentNode.appendChild(this);
