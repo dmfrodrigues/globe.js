@@ -26,7 +26,7 @@ class Globe {
         let [worldData, countryNames, marker] = await Promise.all([
             d3.json("https://unpkg.com/world-atlas@1/world/110m.json"),
             d3.tsv("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv"),
-            d3.text("marker.svg")
+            d3.svg("marker.svg")
         ]);
         
         Globe._COUNTRIES = topojson.feature(worldData, worldData["objects"]["countries"]).features;
@@ -41,7 +41,9 @@ class Globe {
         console.log(marker.documentElement);
         */
 
-        Globe._MARKER = marker;
+        var serializer = new XMLSerializer();
+        var xmlStr = serializer.serializeToString(marker);
+        Globe._MARKER = xmlStr;
     }
 
     /**
