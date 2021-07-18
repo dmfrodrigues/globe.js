@@ -14,9 +14,12 @@
     <svg id="globe" class="globe" viewBox="0 0 800 800"></svg>
     <script>
         window.addEventListener("load", async function(){
-            let globe = new Globe("svg#globe", 800);
+            const marker = await fetch("marker.svg").then(r => r.text());
+
+            let globe = new Globe("svg#globe", 800, marker);
             globe.rotation = [0, -10, 0];
             await globe.initialize();
+            globe.setMarker(marker, 7.025, 21.7833);
 
             globe.nativeCountry("Portugal");
 
@@ -43,7 +46,7 @@
             globe.enableDrag();
             globe.enableZoom();
 
-            // globe.registerRotation(50, 0.005);
+            globe.registerRotation(50, 0.002);
         });
     </script>
 </body>

@@ -14,24 +14,7 @@ class Globe {
      
     static _COUNTRIES;
     static _COUNTRY_BY_ID;
-    static _MARKER =
-        `<g transform="translate(-7.025, -21.7833) scale(0.04)" fill="tomato" style="filter: brightness(90%)">
-            <filter id="inset-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feComponentTransfer in=SourceAlpha>
-                    <feFuncA type="table" tableValues="0.8 0" />
-                </feComponentTransfer>
-                <feGaussianBlur stdDeviation="10"/>
-                <feOffset dx="0" dy="5" result="offsetblur"/>
-                <feFlood flood-color="rgb(0, 0, 0)" result="color"/>
-                <feComposite in2="offsetblur" operator="in"/>
-                <feComposite in2="SourceAlpha" operator="in" />
-                <feMerge>
-                    <feMergeNode in="SourceGraphic" />
-                <feMergeNode />
-                </feMerge>
-            </filter>
-            <path filter="url(#inset-shadow)" d="M182.9,551.7c0,0.1,0.2,0.3,0.2,0.3S358.3,283,358.3,194.6c0-130.1-88.8-186.7-175.4-186.9   C96.3,7.9,7.5,64.5,7.5,194.6c0,88.4,175.3,357.4,175.3,357.4S182.9,551.7,182.9,551.7z M122.2,187.2c0-33.6,27.2-60.8,60.8-60.8   c33.6,0,60.8,27.2,60.8,60.8S216.5,248,182.9,248C149.4,248,122.2,220.8,122.2,187.2z" />
-        </g>`;
+    static _MARKER;
 
     /**
      * @brief Initialize static private members asynchronously.
@@ -82,6 +65,7 @@ class Globe {
         this._rotationResumeTimer = null;
 
         this._locations = [];
+        this._marker = null;
     }
 
     /**
@@ -140,6 +124,16 @@ class Globe {
             );
     }
 
+    setMarker(markerStr, x0, y0){
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(markerStr, "text/xml");
+        this._marker = `
+            <g transform="translate(${-x0},${-y0})">
+                ${xmlDoc.documentElement.innerHTML}
+            </g>
+        `;
+    }
+
     _isVisible(coord){
         const center = [this._size/2, this._size/2];
         const centerXY = this._projection.invert(center);
@@ -186,7 +180,7 @@ class Globe {
             .append("g").attr("class", "marker")
             .append("a").attr("title", d => d.tag)
             .append("g").attr("class", "marker_symbol")
-            .html(Globe._MARKER);
+            .html(this._marker);
 
         this._markersBack
             .selectAll('.marker')
@@ -195,7 +189,7 @@ class Globe {
             .append("g").attr("class", "marker")
             .append("a").attr("title", d => d.tag)
             .append("g").attr("class", "marker_symbol")
-            .html(Globe._MARKER);
+            .html(this._marker);
 
         this._drawMarkers();
     }
