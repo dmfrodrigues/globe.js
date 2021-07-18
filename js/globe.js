@@ -233,19 +233,22 @@ class Globe {
             .selectAll('.marker')
             .data(this._locations)
             .attr('transform', function(d){
+                const originalScale = self._size/2;
                 const x = self._projection(d.coordinates)[0];
                 const y = self._projection(d.coordinates)[1];
-                return `translate(${x},${y}) scale(${Math.sqrt(self._projection.scale()/(self._size/2))})`;
+                const r = self._projection.scale()/originalScale;
+                return `translate(${x},${y}) scale(${Math.sqrt(r)})`;
             });
 
         this._markersBack
             .selectAll('.marker')
             .data(this._locations)
             .attr('transform', function(d){
+                const originalScale = self._size/2;
                 const x = self._projection(d.coordinates)[0];
                 const y = self._projection(d.coordinates)[1];
-
-                return `translate(${x},${y}) scale(${Math.sqrt(self._projection.scale()/(self._size/2))})`;
+                const r = self._projection.scale()/originalScale;
+                return `translate(${x},${y}) scale(${Math.sqrt(r)})`;
             });
         
             /*
