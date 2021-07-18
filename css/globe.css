@@ -19,9 +19,16 @@
     filter: brightness(120%);
 }
 .globe .native {
-    fill: #006297;
+    fill: #69b82a;
 }
 .globe .native:hover {
     filter: brightness(120%);
 }
 
+.marker {
+    filter: saturate(60%) brightness(60%);
+}
+
+.hidden {
+    display: none;
+}

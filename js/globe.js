@@ -48,17 +48,18 @@ class Globe {
     constructor(svgElSelector, size){
         this._size = size;
 
-        this._svg = d3.select(svgElSelector)
-            .attr("width", this._size)
-            .attr("height", this._size);
-        this._map = this._svg.append("g");
-        this._svgEl = document.querySelector(svgElSelector);
         this._projection = d3.geoOrthographic()
             .scale(this._size/2)
             .translate([this._size / 2, this._size / 2]);
         this._path = d3.geoPath().projection(this._projection);
 
-        this._markerGroup = this._svg.append("g").attr("class", "marker_group");
+        this._svg = d3.select(svgElSelector)
+            .attr("width", this._size)
+            .attr("height", this._size);
+
+        this._markersBack  = this._svg.append("g").append("g").attr("class", "markers markers-back");
+        this._map          = this._svg.append("g").attr("class", "map");
+        this._markersFront = this._svg.append("g").append("g").attr("class", "markers markers-front");
 
         this._rotationTimer = null;
         this._rotationDelay = null;
@@ -125,6 +126,13 @@ class Globe {
             );
     }
 
+    _isVisible(coord){
+        const center = [this._size/2, this._size/2];
+        const centerXY = this._projection.invert(center);
+        const dist = d3.geoDistance(coord, centerXY);
+        return (dist <= (Math.PI / 2));
+    }
+
     set rotation (rot){
         this._projection.rotate(rot);
     }
@@ -150,22 +158,34 @@ class Globe {
      * @param {Array} coord Coordinates array
      * @param {String} tag Tag of the new location
      */
-    addLocation(coord, tag) {
+    addLocation(coord, tag, classes) {
         this._locations.push({
             coordinates: coord,
-            tag: tag
+            tag: tag,
+            classes: classes
         });
 
-        this._markerGroup
+        this._markersFront
             .selectAll('.marker')
             .data(this._locations)
             .enter()
             .append("g")
             .attr("class", "marker")
+            .append("a")
+            .attr("title", d => d.tag)
             .append("svg")
-            .append("path")
-            .attr("d", "M 0,0 l -3,+3 l +3,+3 l +3,-3 z")
-            .attr("fill", "tomato");
+            .html(Globe._MARKER);
+
+        this._markersBack
+            .selectAll('.marker')
+            .data(this._locations)
+            .enter()
+            .append("g")
+            .attr("class", "marker")
+            .append("a")
+            .attr("title", d => d.tag)
+            .append("svg")
+            .html(Globe._MARKER);
 
         this._drawMarkers();
     }
@@ -175,23 +195,63 @@ class Globe {
         const center = [this._size/2, this._size/2];
         const centerXY = self._projection.invert(center);
 
-        const markers = this._markerGroup
-            .selectAll('.marker');
-
-        markers
-            .selectAll("svg")
-            .attr('x', d => self._projection(d.coordinates)[0])
-            .attr('y', d => self._projection(d.coordinates)[1])
-            /*
-            .attr('fill', d => {
-                const dist = d3.geoDistance(d.coordinates, centerXY);
-                return dist > (Math.PI / 2) ? 'none' : 'tomato';
+        this._markersFront
+            .selectAll('.marker')
+            .data(this._locations)
+            .select("svg")
+            .attr("class", (d) => d.classes)
+            .attr("transform", function(){
+                return `translate(${-this.getBBox().width/2}, ${-this.getBBox().height})`;
             });
-            */
-            
-        this._markerGroup.each(function() {
+
+        this._markersFront
+            .selectAll('.marker')
+            .data(this._locations)
+            .select("svg")
+            .style("display", (d) => (self._isVisible(d.coordinates) ? "block" : "none"));
+
+        this._markersFront
+            .selectAll('.marker')
+            .data(this._locations)
+            .attr('transform', function(d){
+                const x = self._projection(d.coordinates)[0];
+                const y = self._projection(d.coordinates)[1];
+                return `translate(${x},${y}) scale(${Math.sqrt(self._projection.scale()/(self._size/2))})`;
+            });
+
+        this._markersBack
+            .selectAll('.marker')
+            .data(this._locations)
+            .select("svg")
+            .attr("class", (d) => d.classes);
+
+        this._markersBack
+            .selectAll('.marker')
+            .data(this._locations)
+            .select("svg")
+            .attr("transform", function(){
+                return `translate(${-this.getBBox().width/2}, ${-this.getBBox().height})`;
+            });
+
+        this._markersBack
+            .selectAll('.marker')
+            .data(this._locations)
+            .attr('transform', function(d){
+                const x = self._projection(d.coordinates)[0];
+                const y = self._projection(d.coordinates)[1];
+
+                return `translate(${x},${y}) scale(${Math.sqrt(self._projection.scale()/(self._size/2))})`;
+            });
+        
+            /*
+        this._markersFront.each(function() {
             this.parentNode.appendChild(this);
         });
+        this._markersBack.each(function() {
+            this.parentNode.appendChild(this);
+        });
+        */
+
     }
 
     /**
