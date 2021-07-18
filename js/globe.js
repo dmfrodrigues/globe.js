@@ -14,7 +14,24 @@ class Globe {
      
     static _COUNTRIES;
     static _COUNTRY_BY_ID;
-    static _MARKER;
+    static _MARKER =
+        `<g transform="translate(-7.025, -21.7833) scale(0.04)" fill="tomato" style="filter: brightness(90%)">
+            <filter id="inset-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feComponentTransfer in=SourceAlpha>
+                    <feFuncA type="table" tableValues="0.8 0" />
+                </feComponentTransfer>
+                <feGaussianBlur stdDeviation="10"/>
+                <feOffset dx="0" dy="5" result="offsetblur"/>
+                <feFlood flood-color="rgb(0, 0, 0)" result="color"/>
+                <feComposite in2="offsetblur" operator="in"/>
+                <feComposite in2="SourceAlpha" operator="in" />
+                <feMerge>
+                    <feMergeNode in="SourceGraphic" />
+                <feMergeNode />
+                </feMerge>
+            </filter>
+            <path filter="url(#inset-shadow)" d="M182.9,551.7c0,0.1,0.2,0.3,0.2,0.3S358.3,283,358.3,194.6c0-130.1-88.8-186.7-175.4-186.9   C96.3,7.9,7.5,64.5,7.5,194.6c0,88.4,175.3,357.4,175.3,357.4S182.9,551.7,182.9,551.7z M122.2,187.2c0-33.6,27.2-60.8,60.8-60.8   c33.6,0,60.8,27.2,60.8,60.8S216.5,248,182.9,248C149.4,248,122.2,220.8,122.2,187.2z" />
+        </g>`;
 
     /**
      * @brief Initialize static private members asynchronously.
@@ -22,11 +39,10 @@ class Globe {
      * Initializes, for instance, the coordinates of each country,
      * as well as each country's code (according to the coordinates dataset) and name.
      */
-     static async _initializeStaticAsync(){
-        let [worldData, countryNames, marker] = await Promise.all([
+    static async _initializeStaticAsync(){
+        let [worldData, countryNames] = await Promise.all([
             d3.json("https://unpkg.com/world-atlas@1/world/110m.json"),
-            d3.tsv("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv"),
-            d3.svg("marker.svg")
+            d3.tsv("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv")
         ]);
         
         Globe._COUNTRIES = topojson.feature(worldData, worldData["objects"]["countries"]).features;
@@ -35,15 +51,6 @@ class Globe {
         countryNames.forEach(function (d) {
             Globe._COUNTRY_BY_ID[d.id] = d.name;
         });
-
-        /*
-        marker.documentElement.setAttribute("x", -)
-        console.log(marker.documentElement);
-        */
-
-        var serializer = new XMLSerializer();
-        var xmlStr = serializer.serializeToString(marker);
-        Globe._MARKER = xmlStr;
     }
 
     /**
@@ -176,46 +183,19 @@ class Globe {
             .selectAll('.marker')
             .data(this._locations)
             .enter()
-            .append("g")
-            .attr("class", "marker")
-            .append("a")
-            .attr("title", d => d.tag)
-            .append("svg")
+            .append("g").attr("class", "marker")
+            .append("a").attr("title", d => d.tag)
+            .append("g").attr("class", "marker_symbol")
             .html(Globe._MARKER);
 
         this._markersBack
             .selectAll('.marker')
             .data(this._locations)
             .enter()
-            .append("g")
-            .attr("class", "marker")
-            .append("a")
-            .attr("title", d => d.tag)
-            .append("svg")
+            .append("g").attr("class", "marker")
+            .append("a").attr("title", d => d.tag)
+            .append("g").attr("class", "marker_symbol")
             .html(Globe._MARKER);
-
-        this._markersFront
-            .selectAll('.marker')
-            .data(this._locations)
-            .select("svg")
-            .attr("class", (d) => d.classes)
-            .attr("transform", function(){
-                return `translate(${-this.getBBox().width/2}, ${-this.getBBox().height})`;
-            });
-
-        this._markersBack
-            .selectAll('.marker')
-            .data(this._locations)
-            .select("svg")
-            .attr("class", (d) => d.classes);
-
-        this._markersBack
-            .selectAll('.marker')
-            .data(this._locations)
-            .select("svg")
-            .attr("transform", function(){
-                return `translate(${-this.getBBox().width/2}, ${-this.getBBox().height})`;
-            });
 
         this._drawMarkers();
     }
@@ -228,12 +208,7 @@ class Globe {
         this._markersFront
             .selectAll('.marker')
             .data(this._locations)
-            .select("svg")
-            .style("display", (d) => (self._isVisible(d.coordinates) ? "block" : "none"));
-
-        this._markersFront
-            .selectAll('.marker')
-            .data(this._locations)
+            .style("display", (d) => (self._isVisible(d.coordinates) ? "block" : "none"))
             .attr('transform', function(d){
                 const originalScale = self._size/2;
                 const x = self._projection(d.coordinates)[0];
@@ -252,16 +227,6 @@ class Globe {
                 const r = self._projection.scale()/originalScale;
                 return `translate(${x},${y}) scale(${Math.sqrt(r)})`;
             });
-        
-            /*
-        this._markersFront.each(function() {
-            this.parentNode.appendChild(this);
-        });
-        this._markersBack.each(function() {
-            this.parentNode.appendChild(this);
-        });
-        */
-
     }
 
     /**

@@ -25,8 +25,8 @@
     filter: brightness(120%);
 }
 
-.marker {
-    filter: saturate(60%) brightness(60%);
+.marker:hover {
+    filter: brightness(80%);
 }
 
 .hidden {
