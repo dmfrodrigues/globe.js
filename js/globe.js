@@ -36,6 +36,11 @@ class Globe {
             Globe._COUNTRY_BY_ID[d.id] = d.name;
         });
 
+        /*
+        marker.documentElement.setAttribute("x", -)
+        console.log(marker.documentElement);
+        */
+
         Globe._MARKER = marker;
     }
 
@@ -187,14 +192,6 @@ class Globe {
             .append("svg")
             .html(Globe._MARKER);
 
-        this._drawMarkers();
-    }
-
-    _drawMarkers(){
-        const self = this;
-        const center = [this._size/2, this._size/2];
-        const centerXY = self._projection.invert(center);
-
         this._markersFront
             .selectAll('.marker')
             .data(this._locations)
@@ -202,21 +199,6 @@ class Globe {
             .attr("class", (d) => d.classes)
             .attr("transform", function(){
                 return `translate(${-this.getBBox().width/2}, ${-this.getBBox().height})`;
-            });
-
-        this._markersFront
-            .selectAll('.marker')
-            .data(this._locations)
-            .select("svg")
-            .style("display", (d) => (self._isVisible(d.coordinates) ? "block" : "none"));
-
-        this._markersFront
-            .selectAll('.marker')
-            .data(this._locations)
-            .attr('transform', function(d){
-                const x = self._projection(d.coordinates)[0];
-                const y = self._projection(d.coordinates)[1];
-                return `translate(${x},${y}) scale(${Math.sqrt(self._projection.scale()/(self._size/2))})`;
             });
 
         this._markersBack
@@ -231,6 +213,29 @@ class Globe {
             .select("svg")
             .attr("transform", function(){
                 return `translate(${-this.getBBox().width/2}, ${-this.getBBox().height})`;
+            });
+
+        this._drawMarkers();
+    }
+
+    _drawMarkers(){
+        const self = this;
+        const center = [this._size/2, this._size/2];
+        const centerXY = self._projection.invert(center);
+
+        this._markersFront
+            .selectAll('.marker')
+            .data(this._locations)
+            .select("svg")
+            .style("display", (d) => (self._isVisible(d.coordinates) ? "block" : "none"));
+
+        this._markersFront
+            .selectAll('.marker')
+            .data(this._locations)
+            .attr('transform', function(d){
+                const x = self._projection(d.coordinates)[0];
+                const y = self._projection(d.coordinates)[1];
+                return `translate(${x},${y}) scale(${Math.sqrt(self._projection.scale()/(self._size/2))})`;
             });
 
         this._markersBack
